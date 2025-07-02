@@ -1,11 +1,10 @@
 from bs4 import BeautifulSoup
 from datetime import datetime
 from operator import itemgetter
-# import requests # pdga page blocking me now...
-# from selenium import webdriver
-import cloudscraper
+import requests
 import re
 import numpy as np
+import argparse
 
 # features to add:
 # what rounds you're dropping
@@ -14,21 +13,21 @@ import numpy as np
 # rating increase/decrease
 # unique messages for milestones (highest rating, biggest increase, etc.)
 
-pdga_number = input("Input your PDGA number\n")
+# argparse
+parser = argparse.ArgumentParser(description="PDGA rating calculator")
+parser.add_argument('--pdga', type=str, required=True, help='PDGA number')
+args = parser.parse_args()
+PDGA_NUMBER = args.pdga
 
 # ratings detail page
-url_detail = f'https://www.pdga.com/player/{pdga_number}/details'
-# result_detail = requests.get(url_detail)
-scraper_detail = cloudscraper.create_scraper()
-res_detail = scraper_detail.get(url_detail)
-doc_detail = BeautifulSoup(res_detail.text, "html.parser")
+url_detail = f'https://www.pdga.com/player/{PDGA_NUMBER}/details'
+result_detail = requests.get(url_detail)
+doc_detail = BeautifulSoup(result_detail.text, "html.parser")
 
 # main pdga player profile page
-url_stats = f'https://www.pdga.com/player/{pdga_number}'
-# result_stats = requests.get(url_stats)
-scraper_stats = cloudscraper.create_scraper()
-res_stats = scraper_stats.get(url_stats)
-doc_stats = BeautifulSoup(res_stats.text, "html.parser")
+url_stats = f'https://www.pdga.com/player/{PDGA_NUMBER}'
+result_stats = requests.get(url_stats)
+doc_stats = BeautifulSoup(result_stats.text, "html.parser")
 
 # just grab the players current rating while we're here
 rating_li = doc_stats.find("li", class_="current-rating")
@@ -37,10 +36,8 @@ current_rating = int(re.search(r"Current Rating:(\d+)", current_rating_string).g
 
 # get raings updates dates
 url_updates = 'https://www.pdga.com/faq/ratings/when-updated'
-# result_updates = requests.get(url_updates)
-scraper_updates = cloudscraper.create_scraper()
-res_updates = scraper_updates.get(url_updates)
-doc_updates = BeautifulSoup(res_updates.text, "html.parser")
+result_updates = requests.get(url_updates)
+doc_updates = BeautifulSoup(result_updates.text, "html.parser")
 
 table = doc_updates.find('table')
 # Extract rows from tbody
@@ -129,9 +126,8 @@ for row in tournament_rows:
 
 def get_ratings_from_tournament_page(href_link):
     url = f'https://www.pdga.com{href_link}'
-    scraper = cloudscraper.create_scraper()
-    res = scraper_detail.get(url)
-    doc = BeautifulSoup(res.text, "html.parser")
+    result = requests.get(url)
+    doc = BeautifulSoup(result.text, "html.parser")
     
     rows = doc.find_all('tr')
 
@@ -142,7 +138,7 @@ def get_ratings_from_tournament_page(href_link):
 
     for row in rows:
         pdga_td = row.find('td', class_='pdga-number')
-        if pdga_td and pdga_td.get_text(strip=True) == pdga_number:
+        if pdga_td and pdga_td.get_text(strip=True) == PDGA_NUMBER:
             rating_cells = row.find_all('td', class_='round-rating')
             for cell in rating_cells:
                 rating_text = cell.get_text(strip=True)
@@ -196,6 +192,7 @@ for row in stats_rows:
 tournament_ids = {t['link'] for t in tournaments}
 new_tournaments = [t for t in tournaments_stats if t['link'] not in tournament_ids]
 
+additional_rounds = []
 for tournament in new_tournaments:
     link = tournament['link']
 
@@ -209,7 +206,9 @@ for tournament in new_tournaments:
             tournament_copy = tournament.copy()
             tournament_copy['rating'] = ratings[i]
             tournament_copy['round'] = i+1
-            new_tournaments.append(tournament_copy)
+            additional_rounds.append(tournament_copy)
+
+new_tournaments.extend(additional_rounds)
 
 # see if there are any events that we just finished playing
 # which would mean they won't show up on our player page yet
@@ -247,7 +246,7 @@ used_rounds = new_tournaments + [t for t in tournaments if t['evaluated'] == 'Ye
 
 sorted_rounds = sorted(used_rounds, key=itemgetter('timestamp'), reverse=True)
 
-ratings = [int(t['rating']) for t in tournaments]
+ratings = [int(t['rating']) for t in used_rounds]
 
 avg = np.average(ratings)
 drop_below = np.round(max(avg-100, avg-2.5*np.std(ratings)))
@@ -262,19 +261,19 @@ rating_change = pdga_rating - current_rating
 print(f'New rating: {pdga_rating} ({rating_change:+})')
 
 outgoing_rounds = [t for t in tournaments if t['evaluated'] == 'Yes' and t['timestamp'] < last_date]
-incoming_rounds = new_tournaments
+incoming_rounds = sorted(new_tournaments, key=lambda x: (x.get("timestamp", 0), x.get("round", 0)))
 
-print(f'\nRounds you are dropping:\n')
+print(f'\nRounds you are dropping:')
 for rd in outgoing_rounds:
     name = rd['name']
     round_number = rd['round']
     rating = rd['rating']
-    print(f'{name}, round {round_number}, rating: {rating}\n')
+    print(f'{name}, round {round_number}, rating: {rating}')
 
-print(f'\nRounds you are adding:\n')
+print(f'\nRounds you are adding:')
 for rd in incoming_rounds:
     name = rd['name']
     round_number = rd['round']
     rating = rd['rating']
-    print(f'{name}, round {round_number}, rating: {rating}\n')
+    print(f'{name}, round {round_number}, rating: {rating}')
 
