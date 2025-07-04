@@ -7,8 +7,6 @@ import numpy as np
 import argparse
 
 # features to add:
-# what rounds you're dropping
-# what rounds you're adding
 # outlier rounds
 # rating increase/decrease
 # unique messages for milestones (highest rating, biggest increase, etc.)
@@ -16,6 +14,7 @@ import argparse
 # argparse
 parser = argparse.ArgumentParser(description="PDGA rating calculator")
 parser.add_argument('--pdga', type=str, required=True, help='PDGA number')
+parser.add_argument('--whatif', type=str, required=False)
 args = parser.parse_args()
 PDGA_NUMBER = args.pdga
 
@@ -116,6 +115,7 @@ for row in tournament_rows:
         if cell:
             tournament[key] = cell.get_text(strip=True)
     
+    tournament['rating'] = int(tournament['rating'])
     tournament['timestamp'] = parse_pdga_date(tournament['date'])
 
     tournaments.append(tournament)
@@ -131,6 +131,8 @@ def get_ratings_from_tournament_page(href_link):
     
     rows = doc.find_all('tr')
 
+    league = bool(doc.body.find_all('h4', string=re.compile('.*{0}.*'.format('League')), recursive=True))
+
     ratings = []
 
     date = doc.find(class_='tournament-date').get_text(strip=True)
@@ -143,10 +145,10 @@ def get_ratings_from_tournament_page(href_link):
             for cell in rating_cells:
                 rating_text = cell.get_text(strip=True)
                 if rating_text:
-                    ratings.append(rating_text)
+                    ratings.append(int(rating_text))
             break
     
-    return ratings, timestamp, date
+    return ratings, timestamp, date, league
 
 # see if any tournaments on the "player statistics" page needs to be evaluated
 
@@ -196,7 +198,7 @@ additional_rounds = []
 for tournament in new_tournaments:
     link = tournament['link']
 
-    ratings, timestamp, date = get_ratings_from_tournament_page(link)
+    ratings, timestamp, date, league = get_ratings_from_tournament_page(link)
 
     for i, rating in enumerate(ratings):
         if i==0:
@@ -204,11 +206,18 @@ for tournament in new_tournaments:
             tournament['round'] = i+1
         else:
             tournament_copy = tournament.copy()
-            tournament_copy['rating'] = ratings[i]
+            tournament_copy['rating'] = int(ratings[i])
             tournament_copy['round'] = i+1
             additional_rounds.append(tournament_copy)
 
 new_tournaments.extend(additional_rounds)
+
+#  how far back are we counting rounds
+for dates in ratings_schedule:
+    if dates['deadline'] > int(datetime.now().timestamp()):
+        next_update = dates['deadline']
+        break
+last_date = next_update - 31556952 # minus 1 year
 
 # see if there are any events that we just finished playing
 # which would mean they won't show up on our player page yet
@@ -220,7 +229,11 @@ for event in now_playing + recent_events:
     link = event.find('a')["href"]
     name = event.find('a').get_text(strip=True)
 
-    ratings, timestamp, date = get_ratings_from_tournament_page(link)
+    ratings, timestamp, date, league = get_ratings_from_tournament_page(link)
+
+    # leagues are all counted at once after the league is completed
+    if league and timestamp >= next_update:
+        continue
     
     for i, rating in enumerate(ratings):
         new_tournaments.append(
@@ -235,18 +248,32 @@ for event in now_playing + recent_events:
 
 # calculate pdga rating
 
-#  how far back are we counting rounds
-for dates in ratings_schedule:
-    if dates['deadline'] > int(datetime.now().timestamp()):
-        next_update = dates['deadline']
-        break
-last_date = next_update - 31556952 # minus 1 year
-
 used_rounds = new_tournaments + [t for t in tournaments if t['evaluated'] == 'Yes' and t['timestamp'] > last_date] # and t['included'] == 'Yes' -> don't need, I think we eval all dropped rounds manually
+
+if args.whatif:
+    fake_ratings = args.whatif.split(',')[::-1]
+    for i, rd in enumerate(fake_ratings):
+        used_rounds.append(
+            {
+                'name': f'Fake Round {i+1}',
+                'rating': int(rd),
+                'timestamp': int(datetime.now().timestamp()),
+                'round': i+1
+            }
+        )
+
+        new_tournaments.append(
+            {
+                'name': f'Fake Round {i+1}',
+                'rating': int(rd),
+                'timestamp': int(datetime.now().timestamp()),
+                'round': i+1
+            }
+        )
 
 sorted_rounds = sorted(used_rounds, key=itemgetter('timestamp'), reverse=True)
 
-ratings = [int(t['rating']) for t in used_rounds]
+ratings = [t['rating'] for t in used_rounds]
 
 avg = np.average(ratings)
 drop_below = np.round(max(avg-100, avg-2.5*np.std(ratings)))
@@ -263,6 +290,8 @@ print(f'New rating: {pdga_rating} ({rating_change:+})')
 outgoing_rounds = [t for t in tournaments if t['evaluated'] == 'Yes' and t['timestamp'] < last_date]
 incoming_rounds = sorted(new_tournaments, key=lambda x: (x.get("timestamp", 0), x.get("round", 0)))
 
+outlier_rounds = [r for r in used_rounds if r['rating'] < drop_below]
+
 print(f'\nRounds you are dropping:')
 for rd in outgoing_rounds:
     name = rd['name']
@@ -276,4 +305,16 @@ for rd in incoming_rounds:
     round_number = rd['round']
     rating = rd['rating']
     print(f'{name}, round {round_number}, rating: {rating}')
+
+print(f'\nYour outlier cutoff: {drop_below}')
+
+if outlier_rounds:
+    print(f'Your outlier Rounds:')
+    for rd in outlier_rounds:
+        name = rd['name']
+        round_number = rd['round']
+        rating = rd['rating']
+        print(f'{name}, round {round_number}, rating: {rating}')
+else:
+    print('You have no outlier rounds!')
 
