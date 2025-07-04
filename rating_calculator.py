@@ -7,8 +7,6 @@ import numpy as np
 import argparse
 
 # features to add:
-# outlier rounds
-# rating increase/decrease
 # unique messages for milestones (highest rating, biggest increase, etc.)
 
 # argparse
