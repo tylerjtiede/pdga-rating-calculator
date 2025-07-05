@@ -220,12 +220,21 @@ last_date = next_update - 31556952 # minus 1 year
 # see if there are any events that we just finished playing
 # which would mean they won't show up on our player page yet
 
-now_playing = doc_stats.find_all(class_='current-events')
-recent_events = doc_stats.find_all(class_='recent-events')
+now_playing = doc_stats.find('li', class_='current-events')
+recent_events = doc_stats.find('li', class_='recent-events')
+
+if now_playing:
+    now_playing = now_playing.find_all('a')
+else:
+    now_playing = []
+if recent_events:
+    recent_events = recent_events.find_all('a')
+else:
+    recent_events = []
 
 for event in now_playing + recent_events:
-    link = event.find('a')["href"]
-    name = event.find('a').get_text(strip=True)
+    link = event["href"]
+    name = event.get_text(strip=True)
 
     ratings, timestamp, date, league = get_ratings_from_tournament_page(link)
 
@@ -271,16 +280,19 @@ if args.whatif:
 
 sorted_rounds = sorted(used_rounds, key=itemgetter('timestamp'), reverse=True)
 
-ratings = [t['rating'] for t in used_rounds]
+ratings = [t['rating'] for t in sorted_rounds]
 
 avg = np.average(ratings)
 drop_below = np.round(max(avg-100, avg-2.5*np.std(ratings)))
 ratings_minus_dropped = [r for r in ratings if r >= drop_below]
 
+
+doubled_rounds = ratings_minus_dropped[:len(ratings_minus_dropped)//4]
+print(doubled_rounds)
 if len(ratings_minus_dropped) < 8:
     pdga_rating = round(np.average(ratings_minus_dropped))
 else:
-    pdga_rating = round(np.average(ratings_minus_dropped + ratings_minus_dropped[:len(ratings_minus_dropped)//4]))
+    pdga_rating = round(np.average(ratings_minus_dropped + doubled_rounds))
                         
 rating_change = pdga_rating - current_rating
 print(f'New rating: {pdga_rating} ({rating_change:+})')
