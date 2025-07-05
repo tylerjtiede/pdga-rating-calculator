@@ -279,16 +279,13 @@ if args.whatif:
         )
 
 sorted_rounds = sorted(used_rounds, key=itemgetter('timestamp'), reverse=True)
-
 ratings = [t['rating'] for t in sorted_rounds]
 
 avg = np.average(ratings)
 drop_below = np.round(max(avg-100, avg-2.5*np.std(ratings)))
 ratings_minus_dropped = [r for r in ratings if r >= drop_below]
 
-
 doubled_rounds = ratings_minus_dropped[:len(ratings_minus_dropped)//4]
-print(doubled_rounds)
 if len(ratings_minus_dropped) < 8:
     pdga_rating = round(np.average(ratings_minus_dropped))
 else:
