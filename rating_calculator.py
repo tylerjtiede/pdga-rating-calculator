@@ -193,10 +193,16 @@ tournament_ids = {t['link'] for t in tournaments}
 new_tournaments = [t for t in tournaments_stats if t['link'] not in tournament_ids]
 
 additional_rounds = []
+tournaments_to_remove = [] # for DNFs
 for tournament in new_tournaments:
     link = tournament['link']
 
     ratings, timestamp, date, league = get_ratings_from_tournament_page(link)
+
+    # check if there is no rating
+    if not ratings:
+        tournaments_to_remove.append(tournament)
+        continue
 
     for i, rating in enumerate(ratings):
         if i==0:
@@ -207,6 +213,10 @@ for tournament in new_tournaments:
             tournament_copy['rating'] = int(ratings[i])
             tournament_copy['round'] = i+1
             additional_rounds.append(tournament_copy)
+
+# remove tournaments with no ratings
+for tournament in tournaments_to_remove:
+    new_tournaments.remove(tournament)
 
 new_tournaments.extend(additional_rounds)
 
