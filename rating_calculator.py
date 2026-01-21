@@ -26,10 +26,21 @@ url_stats = f'https://www.pdga.com/player/{PDGA_NUMBER}'
 result_stats = requests.get(url_stats)
 doc_stats = BeautifulSoup(result_stats.text, "html.parser")
 
+# rating history page
+url_history = f'https://www.pdga.com/player/{PDGA_NUMBER}/history'
+result_history = requests.get(url_history)
+doc_history = BeautifulSoup(result_history.text, "html.parser")
+
 # just grab the players current rating while we're here
 rating_li = doc_stats.find("li", class_="current-rating")
-current_rating_string = rating_li.get_text(strip=True)
-current_rating = int(re.search(r"Current Rating:(\d+)", current_rating_string).group(1))
+if rating_li == None:
+    rating_table = doc_history.find('table', id='player-results-history')
+    rating_tbody = rating_table.find('tbody')
+    first_row = rating_tbody.find('tr')
+    current_rating = int(first_row.find('td', class_='player-rating').get_text(strip=True))
+else:
+    current_rating_string = rating_li.get_text(strip=True)
+    current_rating = int(re.search(r"Current Rating:(\d+)", current_rating_string).group(1))
 
 # get raings updates dates
 url_updates = 'https://www.pdga.com/faq/ratings/when-updated'
