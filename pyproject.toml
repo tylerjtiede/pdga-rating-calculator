@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "pdga-rater"
+version = "0.1.0"
+description = "Project your PDGA rating before the official update."
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31",
+    "beautifulsoup4>=4.12",
+    "numpy>=1.26",
+    "rich>=13.0",
+    "customtkinter>=5.2",
+]
+
+[project.scripts]
+pdga-rater     = "pdga_rater.cli:main"
+pdga-rater-gui = "pdga_rater.gui:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout   = 30
+markers   = [
+    "smoke: tests that hit the real PDGA website (slow)",
+]
