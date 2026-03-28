@@ -33,9 +33,9 @@ from ratings_calculator.calculator import project_rating
 SMOKE_PLAYERS = [
     # ── Replace these with verified PDGA numbers ──────────────────────────
     ("178379",    "active player",       True),
-    ("150375",         "the bug reporter — regression target",             True),
+    ("150375",    "the bug reporter — regression target",   True),
     ("177699",    "league-only player",  True),
-    ("73800","infrequent player",   True),
+    ("73800",     "infrequent player",   True),
     # ── These edge cases are stable regardless of who the player is ────────
     ("1",              "PDGA member #1 — very old, likely inactive",       True),
 ]
