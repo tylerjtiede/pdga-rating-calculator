@@ -1,0 +1,75 @@
+name: Tests
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+  schedule:
+    # Run smoke + history tests nightly at 2am UTC to catch PDGA site changes
+    - cron: "0 2 * * *"
+  workflow_dispatch:  # allow manual runs from GitHub UI
+
+jobs:
+  # ── Unit tests (no network, fast) ─────────────────────────────────────────
+  unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package + dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run unit tests
+        run: pytest tests/test_calculator.py -v
+
+  # ── Smoke tests (hits real PDGA site) ─────────────────────────────────────
+  smoke:
+    name: Smoke Tests (PDGA site)
+    runs-on: ubuntu-latest
+    # Only run on schedule or manual trigger — not every push
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package + dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run smoke tests
+        run: pytest tests/test_scraper.py -v --timeout=60
+
+  # ── History math validation ────────────────────────────────────────────────
+  history:
+    name: History Math Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package + dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run history validation tests
+        run: pytest tests/test_history.py -v --timeout=120

@@ -1,6 +1,50 @@
+# Python
 __pycache__/
-*.pyc
-.venv/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
 *.egg-info/
 dist/
+build/
+.eggs/
+.installed.cfg
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-link
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Cache database (user-local, never commit)
+*.db
+~/.pdga_ratings_cache.db
+
+# Testing
+.pytest_cache/
 .coverage
+htmlcov/
+.tox/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Distribution
+*.tar.gz
+*.whl

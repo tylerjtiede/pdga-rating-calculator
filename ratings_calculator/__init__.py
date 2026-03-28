@@ -1,0 +1,1 @@
+"""PDGA Ratings Calculator package."""

@@ -1,43 +1,55 @@
 """
 test_scraper.py
 ---------------
-Smoke tests that hit the real PDGA website to verify the scraper handles
-edge cases: league-only players, infrequent players, inactive players, etc.
+Smoke tests against the real PDGA website. Verifies the scraper handles
+a range of player profiles without crashing or returning nonsense.
 
 Run with:
     pytest tests/test_scraper.py -v --timeout=60
 
-These tests require internet access and are intentionally slow.
-Mark them with -m smoke if you want to keep them separate from unit tests.
+Requires internet access. Slow (~30s). Run on schedule, not every push.
+
+─────────────────────────────────────────────────────────────────────────────
+MAINTENANCE NOTE — update these player numbers as needed.
+Each entry should be a real PDGA number that fits the described profile.
+Verify a player fits their category before adding them here.
+─────────────────────────────────────────────────────────────────────────────
 """
 
 import pytest
-from pdga_rater.scraper import load_player_data, FetchError, ParseError
-from pdga_rater.calculator import project_rating
+from ratings_calculator.scraper    import load_player_data, FetchError, ParseError
+from ratings_calculator.calculator import project_rating
 
 # ---------------------------------------------------------------------------
-# Test player profiles — chosen to cover specific edge cases
+# Test player roster
+# fmt: (pdga_number, description, expect_success)
+#
+# TODO: Replace placeholder numbers with real players you've verified.
+#   - "active player"      → someone you know plays regularly (e.g. your own #)
+#   - "league-only"        → a player whose only rounds are league events
+#   - "infrequent"         → someone with <8 rounds in the past year
+#   - "historical/inactive"→ a very old or inactive member
 # ---------------------------------------------------------------------------
-# Each entry: (pdga_number, description, expect_success)
-# Add more numbers here as you discover new edge cases.
 SMOKE_PLAYERS = [
-    # Typical active player — baseline sanity check
-    ("50160",  "active touring pro",             True),
-    # Player who only plays leagues
-    ("52630",  "league-only player",             True),
-    # Very infrequent player (may trigger 24-month lookback)
-    ("75000",  "infrequent recreational player", True),
-    # Player with no recent activity — may have no projection
-    ("1",      "PDGA member #1 (historical)",    True),
+    # ── Replace these with verified PDGA numbers ──────────────────────────
+    ("178379",    "active player",       True),
+    ("150375",         "the bug reporter — regression target",             True),
+    ("177699",    "league-only player",  True),
+    ("73800","infrequent player",   True),
+    # ── These edge cases are stable regardless of who the player is ────────
+    ("1",              "PDGA member #1 — very old, likely inactive",       True),
 ]
 
 
 @pytest.mark.parametrize("pdga_number,description,expect_success", SMOKE_PLAYERS)
 def test_load_and_project(pdga_number: str, description: str, expect_success: bool):
     """
-    For each test player: load data, attempt projection, validate output shape.
-    Does NOT assert exact rating values — just that we get a sane result.
+    Load data for each player and attempt a projection.
+    Checks output shape and plausibility, not exact values.
     """
+    if pdga_number.startswith("TODO"):
+        pytest.skip(f"Placeholder not yet replaced: {description}")
+
     try:
         data = load_player_data(pdga_number)
     except (FetchError, ParseError) as e:
@@ -50,22 +62,21 @@ def test_load_and_project(pdga_number: str, description: str, expect_success: bo
     assert data["current_rating"] > 0, \
         f"[{pdga_number}] current_rating should be positive"
 
-    # May have no evaluated rounds (very new member, inactive, etc.)
     if not data["tournaments"] and not data["new_tournaments"]:
         pytest.skip(f"[{pdga_number}] {description} — no rounds to project")
 
     try:
         result = project_rating(data["tournaments"], data["new_tournaments"])
-    except ValueError as e:
-        pytest.skip(f"[{pdga_number}] {description} — not enough rounds to project: {e}")
+    except ValueError:
+        pytest.skip(f"[{pdga_number}] {description} — not enough rounds to project")
         return
 
     assert 400 <= result["projected_rating"] <= 1100, \
-        f"[{pdga_number}] projected_rating {result['projected_rating']} out of plausible range"
+        f"[{pdga_number}] projected {result['projected_rating']} is outside plausible range"
     assert result["drop_below"] > 0
-    assert isinstance(result["outgoing_rounds"],  list)
-    assert isinstance(result["incoming_rounds"],  list)
-    assert isinstance(result["outlier_rounds"],   list)
+    assert isinstance(result["outgoing_rounds"], list)
+    assert isinstance(result["incoming_rounds"], list)
+    assert isinstance(result["outlier_rounds"],  list)
 
 
 def test_invalid_pdga_number():
@@ -74,14 +85,11 @@ def test_invalid_pdga_number():
         load_player_data("00000000")
 
 
-def test_cache_hit_returns_same_result():
-    """
-    Fetching the same player twice should return consistent results
-    (second call hits cache).
-    """
-    pdga = "50160"
+def test_cache_returns_consistent_result():
+    """Fetching the same player twice should return identical data (second call hits cache)."""
+    pdga = "150375"
     data1 = load_player_data(pdga)
-    data2 = load_player_data(pdga)  # should hit cache
+    data2 = load_player_data(pdga)
 
-    assert data1["current_rating"] == data2["current_rating"]
-    assert len(data1["tournaments"]) == len(data2["tournaments"])
+    assert data1["current_rating"]     == data2["current_rating"]
+    assert len(data1["tournaments"])   == len(data2["tournaments"])
