@@ -82,3 +82,39 @@ Per the [PDGA FAQ](https://www.pdga.com/faq/ratings):
 4. Average all rounds (including the doubled top quartile).
 
 Results are cached in `~/.pdga_ratings_cache.db` and expire after 6 hours.
+
+## Roadmap
+
+### Simulation & planning
+
+- **Multi-update lookahead** — project what your rating will be at the next 2, 3, or 4 monthly updates, not just the next one. Would account for rounds aging out at each future cutoff and let you see a trajectory rather than a single snapshot.
+
+- **Extended target solver** — the current solver answers "what do I need to average over N rounds to hit X rating at the *next* update?" This would extend it further out: "what do I need to average by the August update to hit X?" Useful for players with a season goal who want to plan their summer schedule.
+
+- **"What's my floor?"** — given your current round set, what's the worst your rating can drop even if you play poorly for the rest of the window? Useful for players who are worried about a bad stretch.
+
+- **Tournament impact preview** — before entering an event, show how a range of performances (e.g. 880–960) would affect your rating. Essentially a what-if slider scoped to a single upcoming tournament.
+
+### History & visualization
+
+- **Rating history chart** — line graph of your rating over time, pulled from the history page. The data is already being scraped for the math validation tests.
+
+- **Round distribution histogram** — see the spread of your round ratings at a glance. Makes it immediately obvious where your outlier cutoff sits relative to your typical performance.
+
+- **Personal bests** — surface your highest ever rating, biggest single-update gain, longest streak of improvements, etc.
+
+- **Outlier recovery tracker** — if you have a bad round currently being outlier-dropped, show exactly when it ages out of the window and how much you'd automatically gain back.
+
+### Multi-player
+
+- **Player comparison** — load two PDGA numbers side-by-side. Useful for tracking a rival or comparing within a club.
+
+- **Group/club view** — enter a list of numbers and see everyone's projected changes at once. Good for league organizers or club captains who track a whole roster.
+
+### Quality of life
+
+- **Saved players** — remember a list of numbers you check frequently, so you don't have to re-enter them each time.
+
+- **Export to CSV** — download your full round history with ratings for your own analysis.
+
+- **Mobile-friendly web layout** — the Flask backend is already live; the frontend just needs a responsive pass for smaller screens.
