@@ -54,13 +54,14 @@ def compute_pdga_rating(ratings: list[int]) -> tuple[int, float]:
 
     arr        = np.array(ratings, dtype=float)
     avg        = float(np.mean(arr))
-    drop_below = float(np.round(max(avg - 100.0, avg - 2.5 * float(np.std(arr)))))
+    drop_below = float(np.round(min(avg - 100.0, avg - 2.5 * float(np.std(arr)))))
 
     filtered = [r for r in ratings if r >= drop_below]
     if not filtered:
         raise ValueError("All rounds were filtered as outliers — cannot compute rating.")
 
-    doubled = filtered[: len(filtered) // 4]
+    filtered_sorted = sorted(filtered, reverse=True)
+    doubled = filtered_sorted[: len(filtered) // 4]
 
     if len(filtered) < MIN_ROUNDS_1_YEAR:
         projected = round(float(np.mean(filtered)))
