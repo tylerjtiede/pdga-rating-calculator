@@ -5,7 +5,7 @@ Project your PDGA rating before the official monthly update.
 ## Installation
 
 ```bash
-git clone https://github.com/you/ratings_calculator
+git clone https://github.com/tylerjtiede/ratings_calculator
 cd ratings_calculator
 pip install -e ".[dev]"
 ```
