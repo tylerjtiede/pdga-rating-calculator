@@ -64,13 +64,6 @@ pytest tests/test_history.py -v --timeout=120
 pytest -v
 ```
 
-### Maintaining the test player roster
-
-`tests/test_scraper.py` and `tests/test_history.py` contain player rosters
-with `TODO` placeholders. Fill these in with PDGA numbers you can personally
-verify fit the described profile (active player, league-only, infrequent, etc.).
-Your own number is a good starting point.
-
 ## How the math works
 
 Per the [PDGA FAQ](https://www.pdga.com/faq/ratings):
